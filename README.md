@@ -73,6 +73,9 @@ pip install -r requirements.txt
 
 ## Uso
 
+### Cargas
+Cargar el .csv "2_dataset_procesado_actualizado.csv" en la carpeta "data/raw/" antes de correr el proyecto.
+
 ### Ejecución Completa
 
 ```bash
@@ -164,20 +167,7 @@ Donde:
 
 ---
 
-## Resultados Esperados
-
-Con datos típicos de hospital (16 pacientes, 3 etapas, 4 pabellones):
-
-| Métrica | Valor |
-|---------|-------|
-| Makespan | 400-600 min |
-| Tiempo de Espera Promedio | 20-40 min |
-| Utilización de Pabellones | 65-85% |
-| Tiempo de Entrenamiento (GPU) | 2-5 min |
-
----
-
-## 🛠️ Componentes Clave
+## Componentes Clave
 
 ### `data_loader.py`
 - Limpieza de valores nulos
