@@ -12,9 +12,9 @@ Este proyecto implementa un sistema de planificación automática de cirugías e
 
 ### Características Principales
 
-**Optimización Multi-Etapa**: Maneja 3 etapas quirúrgicas (preoperatorio, quirófano, postoperatorio)  
-**Gestión de Recursos**: Asignación inteligente de pabellones con capacidad limitada (R=4)  
-**Visualizaciones**: Gráficos Gantt detallados e histogramas de tiempos muertos
+- **Optimización Multi-Etapa**: Maneja 3 etapas quirúrgicas (preoperatorio, quirófano, postoperatorio)
+- **Gestión de Recursos**: Asignación inteligente de pabellones con capacidad limitada (R=4)
+- **Visualizaciones**: Gráficos Gantt detallados e histogramas de tiempos muertos
 ---
 
 ## Estructura del Proyecto
