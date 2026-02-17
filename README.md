@@ -1,7 +1,7 @@
 # CINN-KKT Hospital Surgery Scheduler
 
 
-## 🏥 Descripción del Proyecto
+## Descripción del Proyecto
 
 Este proyecto implementa un sistema de planificación automática de cirugías en hospitales utilizando:
 
