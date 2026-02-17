@@ -7,7 +7,7 @@ import numpy as np
 from src.data_loader import load_and_preprocess_data
 from src.model import SchedulePINN
 from src.trainer import train_model
-from src.post_processing import extract_topology, simulated_annealing_optimization
+from src.post_processing import extract_topology, simulated_annealing_optimization, hill_climbing_optimization
 from src.visualization import plot_advanced_gantt, plot_wait_histograms
 
 def set_seed(seed=42):
@@ -42,7 +42,12 @@ def main():
     # Post-Procesamiento (Hill Climbing)
     print("\n[4/5] Decodificando y aplicando Recocido Simulado...")
     task_data = extract_topology(s_pred, m_probs, p_medical, p_occupancy, J, I, R)
+
+    #para usar SA
     best_tasks = simulated_annealing_optimization(task_data, J, iterations=5000)
+
+    #para usar HC
+    #best_tasks = hill_climbing_optimization(task_data, J, iterations=2000)
 
     # Guardado y Visualizar
     print("\n[5/5] Generando Reportes...")

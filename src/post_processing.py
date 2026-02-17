@@ -57,6 +57,7 @@ def calculate_makespan_from_structure(tasks, J):
     makespan = max([t['real_end'] for t in final_tasks])
     return makespan, final_tasks
 
+#Metaheuristica SA
 def simulated_annealing_optimization(task_data, J, iterations=5000, initial_temp=100.0, cooling_rate=0.995):
     print("Iniciando Recocido Simulado (SA)...")
     best_tasks = copy.deepcopy(task_data)
@@ -101,4 +102,50 @@ def simulated_annealing_optimization(task_data, J, iterations=5000, initial_temp
         T = T * cooling_rate
 
     print(f"Makespan Final Optimizado (SA): {best_makespan:.2f} min")
+    return best_tasks
+
+#Algoritmo Hill Climbing
+def hill_climbing_optimization(task_data, J, iterations=2000):
+    print("Iniciando Búsqueda Local (Hill Climbing)...")
+    best_tasks = copy.deepcopy(task_data)
+    current_tasks = copy.deepcopy(task_data)
+    
+    best_makespan, best_tasks = calculate_makespan_from_structure(best_tasks, J)
+    current_makespan = best_makespan
+    
+    print(f"Makespan CINN (Topología Inicial): {best_makespan:.2f} min")
+    
+    machine_ranges = {0: [1, 2, 3, 4], 1: [5, 6, 7, 8], 2: [9, 10, 11, 12]}
+    
+    for k in range(iterations):
+        # 1. Crear vecino (mutación aleatoria)
+        neighbor_tasks = copy.deepcopy(current_tasks)
+        idx = np.random.randint(0, len(neighbor_tasks))
+        
+        task = neighbor_tasks[idx]
+        stage = task['stage_id']
+        
+        candidates = [m for m in machine_ranges[stage] if m != task['global_machine_id']]
+        if not candidates: continue
+            
+        new_machine = np.random.choice(candidates)
+        neighbor_tasks[idx]['global_machine_id'] = new_machine
+        
+        stage_name = ["PRE", "QX", "POST"][stage]
+        neighbor_tasks[idx]['resource_name'] = f"{stage_name}-{new_machine - (stage * 4)}"
+        
+        # Evaluar vecino
+        neighbor_makespan, updated_schedule = calculate_makespan_from_structure(neighbor_tasks, J)
+        
+        # Aceptar SOLO si es MEJOR o IGUAL
+        if neighbor_makespan <= current_makespan:
+            current_tasks = updated_schedule
+            current_makespan = neighbor_makespan
+            
+            # Actualizar el mejor global encontrado
+            if current_makespan < best_makespan:
+                best_makespan = current_makespan
+                best_tasks = copy.deepcopy(current_tasks)
+
+    print(f"Makespan Final Optimizado (Hill Climbing): {best_makespan:.2f} min")
     return best_tasks
