@@ -1,0 +1,15 @@
+# Ambientes virtuales
+venv/
+env/
+.env
+/.venv
+
+# Archivos de datos pesados (Evita que GitHub colapse)
+data/raw/*.csv
+data/processed/*.csv
+*.csv
+
+# Archivos de Python y Jupyter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
