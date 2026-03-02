@@ -2,6 +2,16 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+#bloque residual
+class ResidualBlock(nn.Module):
+    def __init__(self, hidden_dim):
+        super().__init__()
+        self.fc = nn.Linear(hidden_dim, hidden_dim)
+
+    def forward(self, x):
+        # La magia de ResNet: Salida de la capa + Entrada original
+        return torch.tanh(self.fc(x)) + x
+
 #CINN de 3 capas y funcion de activacion tanh-ReLu
 class SchedulePINN(nn.Module):
     def __init__(self, J, I, R, hidden_dim=128):
@@ -11,28 +21,37 @@ class SchedulePINN(nn.Module):
         self.R = R
         self.job_embedding = nn.Embedding(J, hidden_dim)
         
-        self.net = nn.Sequential(
+        #capa de entrada
+        self.input_layer = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
-            nn.Tanh(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.Tanh(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.Tanh(),
+            nn.Tanh()
         )
+
+        #Bloques Residuales en lugar de Sequential
+        self.res1 = ResidualBlock(hidden_dim)
+        self.res2 = ResidualBlock(hidden_dim)
+        self.res3 = ResidualBlock(hidden_dim)
+
+        #cabezales
         self.head_start = nn.Linear(hidden_dim, I)
         self.head_machine = nn.Linear(hidden_dim, I * R)
         
         self._init_weights()
 
     def _init_weights(self):
-        for m in self.net:
+        for m in self.modules():
             if isinstance(m, nn.Linear):
                 nn.init.xavier_normal_(m.weight)
                 nn.init.constant_(m.bias, 0.0)
 
     def forward(self, job_ids, tau=1.0):
         feats = self.job_embedding(job_ids)
-        x = self.net(feats)
+        
+        #flujo a traves de la red residual
+        x = self.input_layer(feats)
+        x = self.res1(x)
+        x = self.res2(x)
+        x = self.res3(x)
         
         # Multiplicador 300 para abarcar tiempos largos reales (>20 horas)
         start_times = F.softplus(self.head_start(x)) * 300.0 

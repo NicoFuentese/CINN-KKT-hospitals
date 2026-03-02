@@ -3,6 +3,10 @@ import matplotlib.patches as patches
 import pandas as pd
 import numpy as np
 import os
+import seaborn as sns
+
+# Configurar el estilo científico de Seaborn
+sns.set_theme(style="whitegrid", context="paper", font_scale=1.2)
 
 #ploteo de carta gantt
 def plot_advanced_gantt(df, makespan, J, setup_mins=10.0, output_path="data/processed/gantt_final.png"):
@@ -106,3 +110,130 @@ def plot_wait_histograms(df, output_path="data/processed/esperas_histograma.png"
     plt.savefig(output_path, dpi=300)
     print(f"Histogramas guardados en: {output_path}")
     plt.close()
+
+def generar_estadisticas_bai(csv_path="data/processed/solucion_final_optimizada.csv"):
+    try:
+        df = pd.read_csv(csv_path)
+    except FileNotFoundError:
+        print(f"Error: No se encontró {csv_path}. Ejecuta el modelo primero.")
+        return
+
+    makespan = df['real_end'].max()
+    
+    # ---------------------------------------------------------
+    # CÁLCULO DE TIEMPOS DE ESPERA (Wait Times)
+    # ---------------------------------------------------------
+    waits = []
+    for j in df['job_id'].unique():
+        paciente_df = df[df['job_id'] == j].sort_values('stage_id')
+        
+        end_pre = paciente_df[paciente_df['stage_id'] == 0]['real_end'].values
+        start_qx = paciente_df[paciente_df['stage_id'] == 1]['real_start'].values
+        
+        end_qx = paciente_df[paciente_df['stage_id'] == 1]['real_end'].values
+        start_post = paciente_df[paciente_df['stage_id'] == 2]['real_start'].values
+        
+        if len(end_pre)>0 and len(start_qx)>0:
+            waits.append({'job_id': j, 'Fase': 'PRE -> QX', 'Espera (min)': start_qx[0] - end_pre[0]})
+            
+        if len(end_qx)>0 and len(start_post)>0:
+            waits.append({'job_id': j, 'Fase': 'QX -> POST', 'Espera (min)': start_post[0] - end_qx[0]})
+            
+    df_waits = pd.DataFrame(waits)
+
+    # ---------------------------------------------------------
+    # CÁLCULO DE UTILIZACIÓN DE RECURSOS (Load Balancing)
+    # ---------------------------------------------------------
+    # Utilización = (Tiempo total de ocupación médica en el pabellón) / Makespan
+    utilization = []
+    for m in df['resource_name'].unique():
+        df_maq = df[df['resource_name'] == m]
+        # Sumamos la duración médica (el trabajo real)
+        tiempo_trabajo = df_maq['dur_medical'].sum()
+        utilizacion_pct = (tiempo_trabajo / makespan) * 100
+        etapa = m.split('-')[0] # Extrae "PRE", "QX" o "POST"
+        utilization.append({'Recurso': m, 'Etapa': etapa, 'Utilización (%)': utilizacion_pct})
+        
+    df_util = pd.DataFrame(utilization)
+
+    # =========================================================
+    # FIGURA 1: Histograma y KDE de Esperas (Bai Style)
+    # =========================================================
+    fig1, ax1 = plt.subplots(figsize=(10, 6))
+    sns.histplot(data=df_waits, x='Espera (min)', hue='Fase', kde=True, 
+                 palette=['#1f77b4', '#ff7f0e'], bins=15, alpha=0.6, ax=ax1)
+    
+    ax1.set_title("Distribución de Tiempos de Espera entre Etapas Quirúrgicas", fontweight='bold', fontsize=14)
+    ax1.set_xlabel("Tiempo de Espera (Minutos)", fontweight='bold')
+    ax1.set_ylabel("Frecuencia (N° Pacientes)", fontweight='bold')
+    
+    # Líneas de media
+    mean_pre_qx = df_waits[df_waits['Fase'] == 'PRE -> QX']['Espera (min)'].mean()
+    mean_qx_post = df_waits[df_waits['Fase'] == 'QX -> POST']['Espera (min)'].mean()
+    ax1.axvline(mean_pre_qx, color='#1f77b4', linestyle='--', label=f'Media PRE->QX: {mean_pre_qx:.1f}m')
+    ax1.axvline(mean_qx_post, color='#ff7f0e', linestyle='--', label=f'Media QX->POST: {mean_qx_post:.1f}m')
+    ax1.legend()
+    
+    plt.tight_layout()
+    plt.savefig("data/processed/fig1_hist_esperas.png", dpi=300)
+    plt.show()
+
+    # =========================================================
+    # FIGURA 2: Boxplot de Balanceo de Carga (Load Balancing)
+    # =========================================================
+    fig2, ax2 = plt.subplots(figsize=(10, 6))
+    
+    # Boxplot para mostrar la dispersión por etapa
+    sns.boxplot(data=df_util, x='Etapa', y='Utilización (%)', palette="Set2", width=0.5, ax=ax2, boxprops=dict(alpha=0.8))
+    # Stripplot para mostrar los puntos individuales (cada pabellón)
+    sns.stripplot(data=df_util, x='Etapa', y='Utilización (%)', color='black', alpha=0.7, jitter=True, size=8, ax=ax2)
+    
+    ax2.set_title("Balanceo de Carga (Load Balancing) por Etapa", fontweight='bold', fontsize=14)
+    ax2.set_xlabel("Fase Clínica", fontweight='bold')
+    ax2.set_ylabel("Utilización del Recurso (%) sobre el Makespan", fontweight='bold')
+    ax2.set_ylim(0, 100)
+    
+    plt.tight_layout()
+    plt.savefig("data/processed/fig2_boxplot_utilizacion.png", dpi=300)
+    plt.show()
+
+    # =========================================================
+    # FIGURA 3: Boxplot del Flow Time del Paciente
+    # =========================================================
+    flow_times = []
+    for j in df['job_id'].unique():
+        paciente_df = df[df['job_id'] == j]
+        inicio_absoluto = paciente_df['real_start'].min()
+        fin_absoluto = paciente_df['real_end'].max()
+        tiempo_ideal = paciente_df['dur_medical'].sum()
+        
+        flow_times.append({
+            'Paciente': f"P{j}",
+            'Tiempo Real en Hospital (min)': fin_absoluto - inicio_absoluto,
+            'Tiempo Ideal Quirúrgico (min)': tiempo_ideal
+        })
+        
+    df_flow = pd.DataFrame(flow_times)
+    df_melted = df_flow.melt(id_vars=['Paciente'], var_name='Métrica', value_name='Minutos')
+
+    fig3, ax3 = plt.subplots(figsize=(10, 6))
+    sns.boxplot(data=df_melted, x='Métrica', y='Minutos', palette="Pastel1", width=0.5, ax=ax3)
+    sns.stripplot(data=df_melted, x='Métrica', y='Minutos', color='black', alpha=0.6, jitter=True, ax=ax3)
+    
+    ax3.set_title("Eficiencia del Paciente: Tiempo Real vs Tiempo Ideal", fontweight='bold', fontsize=14)
+    ax3.set_xlabel("", fontweight='bold')
+    ax3.set_ylabel("Minutos", fontweight='bold')
+    
+    plt.tight_layout()
+    plt.savefig("data/processed/fig3_boxplot_flow_time.png", dpi=300)
+    plt.show()
+
+    # Imprimir resumen de texto
+    print("================ RESUMEN ESTADÍSTICO ================")
+    print(f"Makespan Total: {makespan:.2f} min")
+    print(f"Espera Promedio PRE -> QX: {mean_pre_qx:.2f} min")
+    print(f"Espera Promedio QX -> POST: {mean_qx_post:.2f} min")
+    print(f"Utilización Promedio PRE: {df_util[df_util['Etapa']=='PRE']['Utilización (%)'].mean():.1f}%")
+    print(f"Utilización Promedio QX: {df_util[df_util['Etapa']=='QX']['Utilización (%)'].mean():.1f}%")
+    print(f"Utilización Promedio POST: {df_util[df_util['Etapa']=='POST']['Utilización (%)'].mean():.1f}%")
+    print("===================================================================")

@@ -28,19 +28,25 @@ def build_constraints_v2(start_times, p_medical, p_occupancy, machine_probs):
         g_wait = (start_times[:, i+1] - (start_times[:, i] + p_medical[:, i])) - W_max
         g_list.append(g_wait)
         
-    # OVERLAP (Solapamiento de Recursos incluyendo Setup/Cleanup)
+    # OVERLAP (Solapamiento de Recursos incluyendo Setup/Cleanup - Bai 2022 Eq 4 y 7)
     penalty = 0.0
     J, I = start_times.shape
+
+    # Bai (2022) estipula: Fin de Ocupación = x_J + p_J + cleanup_J + setup_J
+    # Nuestro p_occupancy ya contiene esta suma (p_medical + buffer_time)
     end_times_occupancy = start_times + p_occupancy
     scale = 50.0 
     
     for i in range(I):
+        # Inicio real de la ocupacion del recurso
         s = start_times[:, i].unsqueeze(1)
+        #fin de la ocupacion (cleanup y setup incluido)
         e = end_times_occupancy[:, i].unsqueeze(1)
         
         inter_min_e = torch.min(e, e.T)
         inter_max_s = torch.max(s, s.T)
         
+        # Calculo de solapamiento fisico en la maquina
         overlap_time = F.relu(inter_min_e - inter_max_s)
         
         mask = torch.eye(J, device=start_times.device).bool()

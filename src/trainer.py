@@ -42,9 +42,11 @@ def train_model(model, p_time_medical, p_time_occupancy, J, I, R, device, MAX_ST
         penalty_term = 0.5 * rho * torch.sum(F.relu(g_val) ** 2)
         max_viol = torch.max(g_val).item()
         
-        if max_viol > 1.0: obj_weight = 0.0 
-        elif max_viol > 0.1: obj_weight = 0.1 
-        else: obj_weight = 2.0 
+        #Transición Sigmoidal / Exponencial del Peso del Objetivo
+        # Si max_viol es 0, exp(0) = 1 -> obj_weight = 2.0 (Busca optimalidad)
+        # Si max_viol es 100, exp(-50) = 0 -> obj_weight = 0.0 (Ignora el makespan, busca factibilidad)
+        k_steepness = 0.5
+        obj_weight = 2.0 * torch.exp(torch.tensor(-k_steepness * max_viol)).item()
             
         loss = (obj_weight * obj) + lagrange_term + penalty_term + (w_balance * load_std)
         
@@ -64,7 +66,10 @@ def train_model(model, p_time_medical, p_time_occupancy, J, I, R, device, MAX_ST
             best_makespan = obj.item()
             best_model_state = copy.deepcopy(model.state_dict())
 
-        if step % 10 == 0:
+        #Frecuencia dinámica de variables Duales (KKT) (MEJORA)
+        #Actualiza cada 10 pasos al inicio, y CADA PASO después del step 5000
+        freq_duals = 1 if step >= 5000 else 10
+        if step % freq_duals == 0:
             with torch.no_grad():
                 s_new, m_new = model(job_ids, tau=tau)
                 g_new = build_constraints_v2(s_new, p_time_medical, p_time_occupancy, m_new)
