@@ -168,10 +168,10 @@ def generar_estadisticas_bai(csv_path="data/processed/solucion_final_optimizada.
     ax1.set_ylabel("Frecuencia (N° Pacientes)", fontweight='bold')
     
     # Líneas de media
-    mean_pre_qx = df_waits[df_waits['Fase'] == 'PRE -> QX']['Espera (min)'].mean()
-    mean_qx_post = df_waits[df_waits['Fase'] == 'QX -> POST']['Espera (min)'].mean()
-    ax1.axvline(mean_pre_qx, color='#1f77b4', linestyle='--', label=f'Media PRE->QX: {mean_pre_qx:.1f}m')
-    ax1.axvline(mean_qx_post, color='#ff7f0e', linestyle='--', label=f'Media QX->POST: {mean_qx_post:.1f}m')
+    mean_pre_qx = df_waits[df_waits['Fase'] == 'APR -> OR']['Espera (min)'].mean()
+    mean_qx_post = df_waits[df_waits['Fase'] == 'OT -> ARR']['Espera (min)'].mean()
+    ax1.axvline(mean_pre_qx, color='#1f77b4', linestyle='--', label=f'Media APR->OR: {mean_pre_qx:.1f}m')
+    ax1.axvline(mean_qx_post, color='#ff7f0e', linestyle='--', label=f'Media OR->ARR: {mean_qx_post:.1f}m')
     ax1.legend()
     
     plt.tight_layout()
@@ -231,9 +231,9 @@ def generar_estadisticas_bai(csv_path="data/processed/solucion_final_optimizada.
     # Imprimir resumen de texto
     print("================ RESUMEN ESTADÍSTICO ================")
     print(f"Makespan Total: {makespan:.2f} min")
-    print(f"Espera Promedio PRE -> QX: {mean_pre_qx:.2f} min")
-    print(f"Espera Promedio QX -> POST: {mean_qx_post:.2f} min")
-    print(f"Utilización Promedio PRE: {df_util[df_util['Etapa']=='PRE']['Utilización (%)'].mean():.1f}%")
-    print(f"Utilización Promedio QX: {df_util[df_util['Etapa']=='QX']['Utilización (%)'].mean():.1f}%")
-    print(f"Utilización Promedio POST: {df_util[df_util['Etapa']=='POST']['Utilización (%)'].mean():.1f}%")
+    print(f"Espera Promedio APR -> OR: {mean_pre_qx:.2f} min")
+    print(f"Espera Promedio OR -> ARR: {mean_qx_post:.2f} min")
+    print(f"Utilización Promedio APR: {df_util[df_util['Etapa']=='APR']['Utilización (%)'].mean():.1f}%")
+    print(f"Utilización Promedio OR: {df_util[df_util['Etapa']=='OR']['Utilización (%)'].mean():.1f}%")
+    print(f"Utilización Promedio ARR: {df_util[df_util['Etapa']=='ARR']['Utilización (%)'].mean():.1f}%")
     print("===================================================================")
