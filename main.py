@@ -4,7 +4,8 @@ import os
 import random
 import numpy as np
 
-from src.data_loader import load_and_preprocess_data
+from src.data_loader import load_raw_data
+from src.data_cleaner import clean_clinical_data, build_daily_tensors
 from src.model import SchedulePINN
 from src.trainer import train_model
 from src.post_processing import extract_topology, simulated_annealing_optimization, hill_climbing_optimization
@@ -28,8 +29,14 @@ def main():
     raw_csv_path = 'data/raw/2_dataset_procesado_actualizado.csv'
 
     #Cargar Datos
-    print("\n[1/5] Extrayendo datos hospitalarios...")
-    p_medical, p_occupancy, J, I, R = load_and_preprocess_data(raw_csv_path, device)
+    print("\n[1/5] Extrayendo y curando datos hospitalarios...")
+    df = load_raw_data(raw_csv_path)
+    df_clean = clean_clinical_data(df)
+    p_medical, p_occupancy, J, I, R = build_daily_tensors(df_clean, 
+                                                        target_date="2023-02-01", 
+                                                        num_samples=16, 
+                                                        buffer_time=20.0, 
+                                                        device=device)
 
     #Inicializar Modelo
     print("\n[2/5] Inicializando Red Neuronal CINN...")

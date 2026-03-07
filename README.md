@@ -60,13 +60,13 @@ CINN-KKT-hospitals/
 
 ### Crear entorno virtual
 ```bash
-python -m venv venv
-source venv/bin/activate  # En Windows: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate  # En Windows: .venv\Scripts\activate
 ```
 
 ### 3. Instalar dependencias
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 ---
