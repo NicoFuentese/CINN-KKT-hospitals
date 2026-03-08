@@ -184,8 +184,8 @@ def generar_estadisticas_bai(csv_path="data/processed/solucion_final_optimizada.
     fig2, ax2 = plt.subplots(figsize=(10, 6))
     
     # Boxplot para mostrar la dispersión por etapa
-    sns.boxplot(data=df_util, x='Etapa', y='Utilización (%)', palette="Set2", width=0.5, ax=ax2, boxprops=dict(alpha=0.8))
-    # Stripplot para mostrar los puntos individuales (cada pabellón)
+# Cambia a esto:
+    sns.boxplot(data=df_util, x='Etapa', y='Utilización (%)', hue='Etapa', legend=False, palette="Set2", width=0.5, ax=ax2, boxprops=dict(alpha=0.8))    # Stripplot para mostrar los puntos individuales (cada pabellón)
     sns.stripplot(data=df_util, x='Etapa', y='Utilización (%)', color='black', alpha=0.7, jitter=True, size=8, ax=ax2)
     
     ax2.set_title("Balanceo de Carga (Load Balancing) por Etapa", fontweight='bold', fontsize=14)
@@ -195,7 +195,7 @@ def generar_estadisticas_bai(csv_path="data/processed/solucion_final_optimizada.
     
     plt.tight_layout()
     plt.savefig("data/processed/fig2_boxplot_utilizacion.png", dpi=300)
-    plt.show()
+    #plt.show()
 
     # =========================================================
     # FIGURA 3: Boxplot del Flow Time del Paciente
@@ -217,7 +217,8 @@ def generar_estadisticas_bai(csv_path="data/processed/solucion_final_optimizada.
     df_melted = df_flow.melt(id_vars=['Paciente'], var_name='Métrica', value_name='Minutos')
 
     fig3, ax3 = plt.subplots(figsize=(10, 6))
-    sns.boxplot(data=df_melted, x='Métrica', y='Minutos', palette="Pastel1", width=0.5, ax=ax3)
+    # Cambia a esto:
+    sns.boxplot(data=df_melted, x='Métrica', y='Minutos', hue='Métrica', legend=False, palette="Pastel1", width=0.5, ax=ax3)
     sns.stripplot(data=df_melted, x='Métrica', y='Minutos', color='black', alpha=0.6, jitter=True, ax=ax3)
     
     ax3.set_title("Eficiencia del Paciente: Tiempo Real vs Tiempo Ideal", fontweight='bold', fontsize=14)
