@@ -1,5 +1,7 @@
 # CINN-KKT Hospital Surgery Scheduler
 
+# Objetivo de la rama
+En esta rama se busca una optimizacion mayor del modelo buscando distintos objetivos (calidad de tiempo de espera, optimizacion de costos del hospital, makespan, balanceo de carga en hospital, etc.)
 
 ## Descripción del Proyecto
 

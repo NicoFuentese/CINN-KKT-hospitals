@@ -29,12 +29,16 @@ def extract_topology(s_pred, m_probs, p_time_medical, p_time_occupancy, J, I, R)
             })
     return task_data
 
-def calculate_makespan_from_structure(tasks, J):
+# --- MODIFICADO: Ahora calcula Makespan, Esperas Y Desbalance ---
+def calculate_metrics(tasks, J):
     machine_avail = {r: 0.0 for r in range(1, 13)} 
+    machine_work_time = {r: 0.0 for r in range(1, 13)} # Cuánto trabaja cada sala
     job_avail = {j: 0.0 for j in range(J)}
     tasks.sort(key=lambda x: x['pinn_start'])
     
     final_tasks = []
+    total_wait_time = 0.0 
+    
     for t in tasks:
         j = t['job_id']
         m_global = t['global_machine_id']
@@ -42,11 +46,16 @@ def calculate_makespan_from_structure(tasks, J):
         dur_occ = t['dur_occupancy']
         
         start_t = max(job_avail[j], machine_avail[m_global])
+        
+        if t['stage_id'] > 0: 
+            total_wait_time += (start_t - job_avail[j])
+            
         end_t_patient = start_t + dur_med
         end_t_machine = start_t + dur_occ
         
         job_avail[j] = end_t_patient
         machine_avail[m_global] = end_t_machine
+        machine_work_time[m_global] += dur_med # Acumulamos el trabajo de esta sala
         
         new_t = t.copy()
         new_t['real_start'] = start_t
@@ -55,18 +64,31 @@ def calculate_makespan_from_structure(tasks, J):
         final_tasks.append(new_t)
         
     makespan = max([t['real_end'] for t in final_tasks])
-    return makespan, final_tasks
+    
+    # Calcular el desbalance (Desviación estándar del tiempo trabajado por etapa)
+    desbalance_total = 0.0
+    for stage in range(3):
+        cargas_etapa = [machine_work_time[m] for m in range((stage*4)+1, (stage*4)+5)]
+        desbalance_total += np.std(cargas_etapa)
+        
+    return makespan, total_wait_time, desbalance_total, final_tasks
 
-#Metaheuristica SA
+# --- MODIFICADO: Metaheurística SA Multi-Objetivo con Balanceo ---
 def simulated_annealing_optimization(task_data, J, iterations=5000, initial_temp=100.0, cooling_rate=0.995):
-    print("Iniciando Recocido Simulado (SA)...")
+    print("Iniciando Recocido Simulado Multi-Objetivo Avanzado (SA)...")
     best_tasks = copy.deepcopy(task_data)
     current_tasks = copy.deepcopy(task_data)
     
-    best_makespan, best_tasks = calculate_makespan_from_structure(best_tasks, J)
-    current_makespan = best_makespan
+    best_makespan, best_waits, best_imb, best_tasks = calculate_metrics(best_tasks, J)
     
-    print(f"Makespan CINN (Topología Inicial): {best_makespan:.2f} min")
+    # PESOS DE IMPORTANCIA:
+    peso_espera = 0.15   # Cuida al paciente sin destruir el Makespan
+    peso_balance = 0.50  # Fuerza a que todos los pabellones trabajen por igual
+    
+    best_cost = best_makespan + (peso_espera * best_waits) + (peso_balance * best_imb)
+    current_cost = best_cost
+    
+    print(f"Inicio SA -> Makespan: {best_makespan:.1f} | Espera: {best_waits:.1f} | Desbalance: {best_imb:.1f}")
     
     machine_ranges = {0: [1, 2, 3, 4], 1: [5, 6, 7, 8], 2: [9, 10, 11, 12]}
     T = initial_temp
@@ -87,38 +109,43 @@ def simulated_annealing_optimization(task_data, J, iterations=5000, initial_temp
         stage_name = ["PRE", "QX", "POST"][stage]
         neighbor_tasks[idx]['resource_name'] = f"{stage_name}-{new_machine - (stage * 4)}"
         
-        neighbor_makespan, updated_schedule = calculate_makespan_from_structure(neighbor_tasks, J)
+        neighbor_makespan, neighbor_waits, neighbor_imb, updated_schedule = calculate_metrics(neighbor_tasks, J)
+        neighbor_cost = neighbor_makespan + (peso_espera * neighbor_waits) + (peso_balance * neighbor_imb)
         
-        delta = neighbor_makespan - current_makespan
+        delta = neighbor_cost - current_cost
         
         if delta < 0 or math.exp(-delta / T) > random.random():
             current_tasks = updated_schedule
-            current_makespan = neighbor_makespan
+            current_cost = neighbor_cost
             
-            if current_makespan < best_makespan:
-                best_makespan = current_makespan
+            if neighbor_cost < best_cost:
+                best_cost = neighbor_cost
+                best_makespan = neighbor_makespan
+                best_waits = neighbor_waits
+                best_imb = neighbor_imb
                 best_tasks = copy.deepcopy(current_tasks)
                 
         T = T * cooling_rate
 
-    print(f"Makespan Final Optimizado (SA): {best_makespan:.2f} min")
+    print(f"Final SA -> Makespan: {best_makespan:.1f} | Espera: {best_waits:.1f} | Desbalance: {best_imb:.1f}")
     return best_tasks
 
-#Algoritmo Hill Climbing
+# --- Algoritmo Hill Climbing (Actualizado para compatibilidad) ---
 def hill_climbing_optimization(task_data, J, iterations=2000):
     print("Iniciando Búsqueda Local (Hill Climbing)...")
     best_tasks = copy.deepcopy(task_data)
     current_tasks = copy.deepcopy(task_data)
     
-    best_makespan, best_tasks = calculate_makespan_from_structure(best_tasks, J)
-    current_makespan = best_makespan
+    best_makespan, best_waits, best_imb, best_tasks = calculate_metrics(best_tasks, J)
     
-    print(f"Makespan CINN (Topología Inicial): {best_makespan:.2f} min")
+    peso_espera = 0.15
+    peso_balance = 0.50
+    best_cost = best_makespan + (peso_espera * best_waits) + (peso_balance * best_imb)
+    current_cost = best_cost
     
     machine_ranges = {0: [1, 2, 3, 4], 1: [5, 6, 7, 8], 2: [9, 10, 11, 12]}
     
     for k in range(iterations):
-        # 1. Crear vecino (mutación aleatoria)
         neighbor_tasks = copy.deepcopy(current_tasks)
         idx = np.random.randint(0, len(neighbor_tasks))
         
@@ -134,18 +161,17 @@ def hill_climbing_optimization(task_data, J, iterations=2000):
         stage_name = ["PRE", "QX", "POST"][stage]
         neighbor_tasks[idx]['resource_name'] = f"{stage_name}-{new_machine - (stage * 4)}"
         
-        # Evaluar vecino
-        neighbor_makespan, updated_schedule = calculate_makespan_from_structure(neighbor_tasks, J)
+        neighbor_makespan, neighbor_waits, neighbor_imb, updated_schedule = calculate_metrics(neighbor_tasks, J)
+        neighbor_cost = neighbor_makespan + (peso_espera * neighbor_waits) + (peso_balance * neighbor_imb)
         
-        # Aceptar SOLO si es MEJOR o IGUAL
-        if neighbor_makespan <= current_makespan:
+        if neighbor_cost <= current_cost:
             current_tasks = updated_schedule
-            current_makespan = neighbor_makespan
+            current_cost = neighbor_cost
             
-            # Actualizar el mejor global encontrado
-            if current_makespan < best_makespan:
-                best_makespan = current_makespan
+            if current_cost < best_cost:
+                best_cost = current_cost
+                best_makespan = neighbor_makespan
+                best_waits = neighbor_waits
                 best_tasks = copy.deepcopy(current_tasks)
 
-    print(f"Makespan Final Optimizado (Hill Climbing): {best_makespan:.2f} min")
     return best_tasks
