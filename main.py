@@ -9,7 +9,7 @@ from src.data_cleaner import clean_clinical_data, build_daily_tensors
 from src.model import SchedulePINN
 from src.trainer import train_model
 from src.post_processing import extract_topology, simulated_annealing_optimization, hill_climbing_optimization
-from src.visualization import plot_advanced_gantt, plot_wait_histograms
+from src.visualization import plot_advanced_gantt, plot_wait_histograms, plot_convergence_curve
 
 def set_seed(seed=42):
     torch.manual_seed(seed)
@@ -44,7 +44,7 @@ def main():
 
     #Entrenamiento
     print("\n[3/5] Entrenando con Restricciones KKT...")
-    model, s_pred, m_probs = train_model(model, p_medical, p_occupancy, J, I, R, device, MAX_STEPS=10000)
+    model, s_pred, m_probs, training_history = train_model(model, p_medical, p_occupancy, J, I, R, device, MAX_STEPS=10000)
 
     # Post-Procesamiento (Hill Climbing)
     print("\n[4/5] Decodificando y aplicando Recocido Simulado...")
@@ -58,6 +58,7 @@ def main():
 
     # Guardado y Visualizar
     print("\n[5/5] Generando Reportes...")
+    plot_convergence_curve(training_history)
     df_final = pd.DataFrame(best_tasks)
     df_final.to_csv("data/processed/solucion_final_optimizada.csv", index=False)
     

@@ -23,6 +23,7 @@ def train_model(model, p_time_medical, p_time_occupancy, J, I, R, device, MAX_ST
     
     print("Iniciando Entrenamiento CINN...")
     
+    training_history = []
     for step in range(MAX_STEPS):
         tau = max(tau_end, tau_start - (tau_start - tau_end) * (step / (MAX_STEPS * 0.9)))
         
@@ -55,7 +56,14 @@ def train_model(model, p_time_medical, p_time_occupancy, J, I, R, device, MAX_ST
         torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
         optimizer.step()
         
-        current_real_viol = max_viol * 50.0 
+        current_real_viol = max_viol * 50.0
+
+        if step % 50 == 0:
+            training_history.append({
+                'step': step,
+                'makespan': obj.item(),
+                'violation': current_real_viol
+            })
         
         # Guardar el mejor modelo (Violacion 0 de KKTs)
         if current_real_viol < best_viol:
@@ -89,4 +97,4 @@ def train_model(model, p_time_medical, p_time_occupancy, J, I, R, device, MAX_ST
     with torch.no_grad():
         s_pred_final, m_probs_final = model(job_ids, tau=0.001)
         
-    return model, s_pred_final, m_probs_final
+    return model, s_pred_final, m_probs_final, training_history

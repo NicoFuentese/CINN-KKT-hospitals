@@ -238,3 +238,38 @@ def generar_estadisticas_bai(csv_path="data/processed/solucion_final_optimizada.
     print(f"Utilización Promedio QX: {df_util[df_util['Etapa']=='QX']['Utilización (%)'].mean():.1f}%")
     print(f"Utilización Promedio POST: {df_util[df_util['Etapa']=='POST']['Utilización (%)'].mean():.1f}%")
     print("===================================================================")
+
+def plot_convergence_curve(history_data, output_path="data/processed/convergencia_primal_dual.png"):
+    # Convertimos la lista de diccionarios en un DataFrame
+    df = pd.DataFrame(history_data)
+    
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+
+    # EJE Y IZQUIERDO: Makespan (Azul)
+    color1 = '#1f77b4' # Azul científico
+    ax1.set_xlabel('Iteraciones de Entrenamiento (Steps)', fontweight='bold', fontsize=12)
+    ax1.set_ylabel('Makespan Predicho (Minutos)', color=color1, fontweight='bold', fontsize=12)
+    line1 = ax1.plot(df['step'], df['makespan'], color=color1, label='Makespan (Eficiencia)', linewidth=2.5)
+    ax1.tick_params(axis='y', labelcolor=color1)
+    ax1.grid(True, axis='x', linestyle='--', alpha=0.7)
+
+    # EJE Y DERECHO: Violación KKT (Rojo)
+    ax2 = ax1.twinx()  # Instanciar un segundo eje que comparte el mismo eje X
+    color2 = '#d62728' # Rojo científico
+    ax2.set_ylabel('Violación Máxima de Restricciones KKT', color=color2, fontweight='bold', fontsize=12)
+    line2 = ax2.plot(df['step'], df['violation'], color=color2, label='Violaciones (Factibilidad)', linewidth=2.5, alpha=0.85)
+    ax2.tick_params(axis='y', labelcolor=color2)
+    
+    # Escala Logarítmica (Simétrica) para el eje de violaciones porque los números son muy grandes
+    ax2.set_yscale('symlog') 
+
+    # Añadir leyenda combinada abajo
+    lines = line1 + line2
+    labels = [l.get_label() for l in lines]
+    ax1.legend(lines, labels, loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2, frameon=False, fontsize=12)
+
+    plt.title('Curva de Convergencia Primal-Dual de la Red CINN', fontweight='bold', fontsize=14)
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    print(f"Curva de convergencia guardada en: {output_path}")
+    plt.close()
